@@ -1,0 +1,101 @@
+package archivojflex;
+import java_cup.runtime.*;
+import java.io.FileReader;
+import java.util.TreeMap;
+/*----------Seccion de declaracion de metodos para reportar los errores----------------------*/
+                //Muetra la informacion de la linea y columna donde se produjo el error
+parser code {:
+    public void report_error(String message, Object info) {
+        StringBuilder m = new StringBuilder("EXISTE UN ERRROR ");
+        if (info instanceof java_cup.runtime.Symbol) {
+            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+            if (s.left >= 0) {                
+                m.append(" EN LA LINEA ==> "+(s.left+1));
+                if (s.right >= 0)
+                    m.append(", COLUMNA ==> "+(s.right+1));
+            }
+        }
+        m.append(" || "+message);
+        System.err.println(m);
+    }
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+        //System.exit(1);
+    }
+    //Declaramos una variable tipo TreeMap para almacenar los numeros cardinales
+    public final static TreeMap<Integer, String> numeros = new TreeMap<Integer, String>();
+    //Declaramos estas variable para obtener y presentar los resultados por la Interfaz Grafica
+    public static String result = "";
+    public static String fail = "";
+    public static String failSint = "";
+    //Metodo Traducir recibe el valor entero y devuelve una cadena
+    public static String Traducir(Integer numero) {
+        String num = "";
+        result = "";
+        //Se obtiene del mapa el valor en este caso la cadena
+        num = numeros.get(numero);
+        System.out.println(" ==> " + num);
+        result = num;
+        return num;
+    }
+
+    public static void main(String[] args){  
+        numeros.put(1, "first");
+        numeros.put(2, "second");
+        numeros.put(3, "third");
+        numeros.put(4, "fourth");
+        numeros.put(5, "fiveth");
+        numeros.put(6, "sixth");
+        numeros.put(7, "seventh");
+        numeros.put(8, "eighth");
+        numeros.put(9, "nineth");
+        numeros.put(10, "tenth"); 
+        try {
+            AnalizadorLexico al = new AnalizadorLexico(new FileReader(args[0]));
+            failSint = al.failLexico;
+            AnalizadorSintactico asin = new AnalizadorSintactico(al);
+            Object result = asin.parse().value;
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    } 
+:};            
+
+
+
+
+
+/*----------Seccion de declaracion de simbolos terminales y no terminales----------------------*/
+                //Terminales tokens obtenidos en el analizador lexico
+                //Terminales que no tienen un valor son listados primero
+                //Terminales que tienen un valor como los enteros son listados en la segunda linea
+terminal PC, TRADUCIR;
+terminal Integer NUM;
+
+/*----------Seccion de tokens no terminales usados en la seccion gramatical--------------------*/
+                //Primero se lista los no terminales que tienen un valor Object
+                //Despues se lista los no terminales que tienen un entero
+non terminal Object cadena,instruccion;
+
+/*----------Seccion de precedencia y asociacion de los terminales-----------------------------*/
+                //Precedencia de los no terminales, nos sirve con simbolos terminales
+                //Además indica si se asocia a izquierda o derecha.
+/*----------Seccion de la gramatica-----------------------------------------------------------*/
+                //Definimos la variable cadena que almacena el valor de cada instruccion
+cadena::=cadena instruccion | instruccion;
+                //La siguiente linea emite un error al encontra la cadena vacia
+                //Muestra el error donde se prujo e indica que falta la palabra traducir 
+instruccion::=  error {:parser.report_fatal_error("FALTA LA PALABRA RESERVADA <<traducir>>", 3 ); 
+                AnalizadorSintactico.fail = " FALTA LA PALABRA RESERVADA <<traducir>> ";:}
+                //La siguiente linea indica un error de sintaxis ya que la instruccion esta incompleta
+                //Indica al usuario donde se produjo el error y como debe solucionarlo
+                //Pedira que se ingrese el numero a traducir en valor entero 
+| TRADUCIR error {:parser.report_fatal_error("FAlTA EL NUMERO A TRADUCIR <<ingrese un numero entero>>", 4 );
+                AnalizadorSintactico.fail = " FAlTA EL NUMERO A TRADUCIR <<numero entero>> "; :}
+                //La siguiente linea muestra un error sintactico ya que falta completar la instruccion
+                //Indica al usuario que debe ingresar un punto y coma al final de cada instruccion
+| TRADUCIR NUM error {:parser.report_fatal_error("FAlTA EL PUNTO Y COMA <<;>>", 2 ); 
+                AnalizadorSintactico.fail = " FAlTA EL PUNTO Y COMA <<;>> "; :}
+                //LA siguiente linea acepta la instruccion y llama al metodo Traducir
+                //Pasa como parametro el volor del numero a traducir
+| TRADUCIR NUM:n PC {: System.out.print(n);AnalizadorSintactico.Traducir(n); :};
